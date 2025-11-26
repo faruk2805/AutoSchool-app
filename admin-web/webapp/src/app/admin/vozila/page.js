@@ -1,0 +1,743 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Sidebar from "../../../components/Sidebar";
+import VehicleStats from "./components/VehicleStats";
+import VehiclesList from "./components/VehiclesList";
+import VehicleDetails from "./components/VehicleDetails";
+import ServiceHistory from "./components/ServiceHistory";
+import DailyMileage from "./components/DailyMileage";
+import LoadingScreen from "./components/LoadingScreen";
+
+export default function VozilaAdmin() {
+  const [user, setUser] = useState(null);
+  const [activeSection, setActiveSection] = useState("vozila");
+  const [isLoading, setIsLoading] = useState(true);
+  const [vehicles, setVehicles] = useState([]);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [serviceHistory, setServiceHistory] = useState([]);
+  const [dailyMileage, setDailyMileage] = useState([]);
+  const [activeTab, setActiveTab] = useState("details");
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [hoveredCard, setHoveredCard] = useState(null);
+  const router = useRouter();
+
+  // Bogati mock podaci za vozila
+  const mockVehicles = [
+    {
+      _id: 'mock_vehicle_1',
+      make: 'Volkswagen',
+      model: 'Golf 8 R-Line',
+      year: 2023,
+      plate: 'SA-123-A',
+      currentOdometer: 15680,
+      status: 'active',
+      instructor: {
+        _id: '68ddb01cebb9729427e99c14',
+        name: 'Amir',
+        surname: 'Hodžić'
+      },
+      fuelType: 'dizel',
+      transmission: 'automatski',
+      color: 'bistra plava',
+      createdAt: '2023-03-15T08:00:00.000Z',
+      updatedAt: '2024-03-20T10:30:00.000Z'
+    },
+    {
+      _id: 'mock_vehicle_2',
+      make: 'BMW',
+      model: '320d xDrive',
+      year: 2022,
+      plate: 'SA-456-B',
+      currentOdometer: 34250,
+      status: 'active',
+      instructor: {
+        _id: '68ddb01cebb9729427e99c15',
+        name: 'Lejla',
+        surname: 'Kovačević'
+      },
+      fuelType: 'dizel',
+      transmission: 'automatski',
+      color: 'crna safir',
+      createdAt: '2022-11-20T08:00:00.000Z',
+      updatedAt: '2024-03-19T16:45:00.000Z'
+    },
+    {
+      _id: 'mock_vehicle_3',
+      make: 'Mercedes-Benz',
+      model: 'A 200 AMG',
+      year: 2024,
+      plate: 'SA-789-C',
+      currentOdometer: 8450,
+      status: 'active',
+      instructor: {
+        _id: '68ddb01cebb9729427e99c16',
+        name: 'Dario',
+        surname: 'Marić'
+      },
+      fuelType: 'benzin',
+      transmission: 'automatski',
+      color: 'srebrna',
+      createdAt: '2024-01-10T08:00:00.000Z',
+      updatedAt: '2024-03-20T14:20:00.000Z'
+    },
+    {
+      _id: 'mock_vehicle_4',
+      make: 'Audi',
+      model: 'A4 S-line',
+      year: 2021,
+      plate: 'SA-012-D',
+      currentOdometer: 67890,
+      status: 'maintenance',
+      instructor: {
+        _id: '68ddb01cebb9729427e99c14',
+        name: 'Amir',
+        surname: 'Hodžić'
+      },
+      fuelType: 'dizel',
+      transmission: 'manuelni',
+      color: 'crvena',
+      createdAt: '2021-08-05T08:00:00.000Z',
+      updatedAt: '2024-03-18T09:15:00.000Z'
+    },
+    {
+      _id: 'mock_vehicle_5',
+      make: 'Škoda',
+      model: 'Octavia Style',
+      year: 2023,
+      plate: 'SA-345-E',
+      currentOdometer: 23400,
+      status: 'active',
+      instructor: null,
+      fuelType: 'benzin',
+      transmission: 'manuelni',
+      color: 'bijela',
+      createdAt: '2023-06-12T08:00:00.000Z',
+      updatedAt: '2024-03-20T11:30:00.000Z'
+    }
+  ];
+
+  // Bogata servisna historija
+  const mockServiceHistory = [
+    // Volkswagen Golf servisi
+    {
+      _id: 'mock_service_1',
+      vehicle: 'mock_vehicle_1',
+      type: 'redovni servis',
+      description: 'Veliki servis - zamjena ulja, filtera zraka, filtera goriva, kontrola kočnica i ovjesa',
+      mileage: 15000,
+      cost: 450,
+      date: '2024-02-15T08:00:00.000Z',
+      nextServiceMileage: 30000,
+      createdAt: '2024-02-15T08:00:00.000Z'
+    },
+    {
+      _id: 'mock_service_2',
+      vehicle: 'mock_vehicle_1',
+      type: 'zamjena guma',
+      description: 'Zamjena ljetnih sa zimskim gumama Continental WinterContact',
+      mileage: 14800,
+      cost: 120,
+      date: '2023-11-10T08:00:00.000Z',
+      nextServiceMileage: null,
+      createdAt: '2023-11-10T08:00:00.000Z'
+    },
+    // BMW servisi
+    {
+      _id: 'mock_service_3',
+      vehicle: 'mock_vehicle_2',
+      type: 'redovni servis',
+      description: 'Servis motora - zamjena ulja, filtera, kontrola DPF filtera',
+      mileage: 30000,
+      cost: 680,
+      date: '2024-01-20T08:00:00.000Z',
+      nextServiceMileage: 45000,
+      createdAt: '2024-01-20T08:00:00.000Z'
+    },
+    {
+      _id: 'mock_service_4',
+      vehicle: 'mock_vehicle_2',
+      type: 'kočioni sistem',
+      description: 'Zamjena prednjih kočionih pločica i diskova',
+      mileage: 29500,
+      cost: 420,
+      date: '2023-12-05T08:00:00.000Z',
+      nextServiceMileage: null,
+      createdAt: '2023-12-05T08:00:00.000Z'
+    },
+    // Mercedes servisi
+    {
+      _id: 'mock_service_5',
+      vehicle: 'mock_vehicle_3',
+      type: 'prvi servis',
+      description: 'Prvi servis - zamjena ulja i filtera, opća kontrola vozila',
+      mileage: 8000,
+      cost: 320,
+      date: '2024-03-10T08:00:00.000Z',
+      nextServiceMileage: 20000,
+      createdAt: '2024-03-10T08:00:00.000Z'
+    },
+    // Audi servisi
+    {
+      _id: 'mock_service_6',
+      vehicle: 'mock_vehicle_4',
+      type: 'veliki servis',
+      description: 'Kompletan servis - ulje, filteri, kočione pločice, diskovi, klima servis',
+      mileage: 65000,
+      cost: 890,
+      date: '2024-03-18T08:00:00.000Z',
+      nextServiceMileage: 85000,
+      createdAt: '2024-03-18T08:00:00.000Z'
+    },
+    // Škoda servisi
+    {
+      _id: 'mock_service_7',
+      vehicle: 'mock_vehicle_5',
+      type: 'redovni servis',
+      description: 'Zamjena ulja i filtera, kontrola tehnike',
+      mileage: 20000,
+      cost: 280,
+      date: '2024-01-30T08:00:00.000Z',
+      nextServiceMileage: 35000,
+      createdAt: '2024-01-30T08:00:00.000Z'
+    }
+  ];
+
+  // Bogata dnevna kilometraža
+  const mockDailyMileage = [
+    // Volkswagen Golf kilometraža
+    {
+      _id: 'mock_mileage_1',
+      vehicle: 'mock_vehicle_1',
+      date: '2024-03-20T08:00:00.000Z',
+      startOdometer: 15500,
+      endOdometer: 15680,
+      distance: 180,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c14',
+        name: 'Amir',
+        surname: 'Hodžić'
+      },
+      notes: 'Vožnje po gradu sa polaznicima - centar, Ilidža, Otoka',
+      createdAt: '2024-03-20T18:30:00.000Z'
+    },
+    {
+      _id: 'mock_mileage_2',
+      vehicle: 'mock_vehicle_1',
+      date: '2024-03-19T08:00:00.000Z',
+      startOdometer: 15320,
+      endOdometer: 15500,
+      distance: 180,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c14',
+        name: 'Amir',
+        surname: 'Hodžić'
+      },
+      notes: 'Vježbe na otvorenom putu - autoput ka Zenici',
+      createdAt: '2024-03-19T17:45:00.000Z'
+    },
+    // BMW kilometraža
+    {
+      _id: 'mock_mileage_3',
+      vehicle: 'mock_vehicle_2',
+      date: '2024-03-20T08:00:00.000Z',
+      startOdometer: 34100,
+      endOdometer: 34250,
+      distance: 150,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c15',
+        name: 'Lejla',
+        surname: 'Kovačević'
+      },
+      notes: 'Polaznici - prve vožnje po gradskim ulicama',
+      createdAt: '2024-03-20T19:15:00.000Z'
+    },
+    {
+      _id: 'mock_mileage_4',
+      vehicle: 'mock_vehicle_2',
+      date: '2024-03-19T08:00:00.000Z',
+      startOdometer: 33900,
+      endOdometer: 34100,
+      distance: 200,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c15',
+        name: 'Lejla',
+        surname: 'Kovačević'
+      },
+      notes: 'Vožnje na testnoj stazi - parkiranje, poligon',
+      createdAt: '2024-03-19T16:20:00.000Z'
+    },
+    // Mercedes kilometraža
+    {
+      _id: 'mock_mileage_5',
+      vehicle: 'mock_vehicle_3',
+      date: '2024-03-20T08:00:00.000Z',
+      startOdometer: 8300,
+      endOdometer: 8450,
+      distance: 150,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c16',
+        name: 'Dario',
+        surname: 'Marić'
+      },
+      notes: 'Napredne vožnje - autocesta, noćne vožnje',
+      createdAt: '2024-03-20T21:30:00.000Z'
+    },
+    {
+      _id: 'mock_mileage_6',
+      vehicle: 'mock_vehicle_3',
+      date: '2024-03-18T08:00:00.000Z',
+      startOdometer: 8100,
+      endOdometer: 8300,
+      distance: 200,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c16',
+        name: 'Dario',
+        surname: 'Marić'
+      },
+      notes: 'Vožnje po kiši - adaptacija na teške vremenske uslove',
+      createdAt: '2024-03-18T19:45:00.000Z'
+    },
+    // Audi kilometraža
+    {
+      _id: 'mock_mileage_7',
+      vehicle: 'mock_vehicle_4',
+      date: '2024-03-17T08:00:00.000Z',
+      startOdometer: 67700,
+      endOdometer: 67890,
+      distance: 190,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c14',
+        name: 'Amir',
+        surname: 'Hodžić'
+      },
+      notes: 'Zadnja vožnja prije servisa - testiranje kočnica',
+      createdAt: '2024-03-17T16:15:00.000Z'
+    },
+    // Škoda kilometraža
+    {
+      _id: 'mock_mileage_8',
+      vehicle: 'mock_vehicle_5',
+      date: '2024-03-20T08:00:00.000Z',
+      startOdometer: 23200,
+      endOdometer: 23400,
+      distance: 200,
+      enteredBy: null,
+      notes: 'Rezervno vozilo - razne vožnje po gradu',
+      createdAt: '2024-03-20T20:00:00.000Z'
+    },
+    {
+      _id: 'mock_mileage_9',
+      vehicle: 'mock_vehicle_5',
+      date: '2024-03-19T08:00:00.000Z',
+      startOdometer: 23000,
+      endOdometer: 23200,
+      distance: 200,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c15',
+        name: 'Lejla',
+        surname: 'Kovačević'
+      },
+      notes: 'Zamjensko vozilo - vožnje instruktora Lejle',
+      createdAt: '2024-03-19T18:30:00.000Z'
+    },
+    {
+      _id: 'mock_mileage_10',
+      vehicle: 'mock_vehicle_1',
+      date: '2024-03-18T08:00:00.000Z',
+      startOdometer: 15100,
+      endOdometer: 15320,
+      distance: 220,
+      enteredBy: {
+        _id: '68ddb01cebb9729427e99c14',
+        name: 'Amir',
+        surname: 'Hodžić'
+      },
+      notes: 'Duga vožnja - Sarajevo - Visoko - Sarajevo',
+      createdAt: '2024-03-18T20:15:00.000Z'
+    }
+  ];
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    const userData = localStorage.getItem("user");
+
+    if (!token || role !== "admin") {
+      router.push("/login");
+      return;
+    }
+
+    // Simuliramo učitavanje
+    setTimeout(() => {
+      setUser(JSON.parse(userData));
+      setIsLoading(false);
+      fetchVehicles();
+    }, 1000);
+  }, [router]);
+
+  const fetchVehicles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('http://localhost:5000/api/vehicles', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const apiVehicles = await response.json();
+        console.log('API vozila:', apiVehicles);
+        
+        // Kombiniraj API vozila sa bogatim mock vozilima
+        const allVehicles = [...apiVehicles, ...mockVehicles];
+        setVehicles(allVehicles);
+      } else {
+        throw new Error('API nije dostupan');
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      // Fallback na bogate mock podatke
+      setVehicles(mockVehicles);
+    }
+  };
+
+  const fetchVehicleDetails = async (vehicleId) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Fetch vehicle details
+      const vehicleResponse = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (vehicleResponse.ok) {
+        const vehicleData = await vehicleResponse.json();
+        console.log('Detalji vozila:', vehicleData);
+        setSelectedVehicle(vehicleData);
+        
+        // Fetch service history
+        await fetchServiceHistory(vehicleId);
+        
+        // Fetch daily mileage
+        await fetchDailyMileage(vehicleId);
+      } else {
+        throw new Error('API nije dostupan');
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle details:', error);
+      // Fallback na mock podatke
+      const mockVehicle = mockVehicles.find(v => v._id === vehicleId) || vehicles.find(v => v._id === vehicleId);
+      setSelectedVehicle(mockVehicle);
+      
+      const mockServices = mockServiceHistory.filter(s => s.vehicle === vehicleId);
+      setServiceHistory(mockServices);
+      
+      const mockMileage = mockDailyMileage.filter(m => m.vehicle === vehicleId);
+      setDailyMileage(mockMileage);
+    }
+  };
+
+  const fetchServiceHistory = async (vehicleId) => {
+    try {
+      // Ovdje bi bio API poziv za servisnu historiju
+      // Za sada koristimo bogate mock podatke
+      const mockServices = mockServiceHistory.filter(s => s.vehicle === vehicleId);
+      setServiceHistory(mockServices);
+    } catch (error) {
+      console.error('Error fetching service history:', error);
+      const mockServices = mockServiceHistory.filter(s => s.vehicle === vehicleId);
+      setServiceHistory(mockServices);
+    }
+  };
+
+  const fetchDailyMileage = async (vehicleId) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}/mileage`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const mileageData = await response.json();
+        console.log('Kilometraža:', mileageData);
+        setDailyMileage(mileageData);
+      } else {
+        throw new Error('API nije dostupan');
+      }
+    } catch (error) {
+      console.error('Error fetching daily mileage:', error);
+      // Fallback na bogate mock podatke
+      const mockMileage = mockDailyMileage.filter(m => m.vehicle === vehicleId);
+      setDailyMileage(mockMileage);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
+
+  const handleSectionChange = (sectionId) => {
+    setActiveSection(sectionId);
+  };
+
+  const handleVehicleSelect = async (vehicle) => {
+    await fetchVehicleDetails(vehicle._id);
+    setActiveTab("details");
+  };
+
+  const handleAddService = async (serviceData) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`http://localhost:5000/api/vehicles/${selectedVehicle._id}/service`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(serviceData)
+      });
+      
+      if (response.ok) {
+        setSnackbar({ open: true, message: 'Servis uspješno dodan', severity: 'success' });
+        await fetchServiceHistory(selectedVehicle._id);
+      } else {
+        throw new Error('Greška pri dodavanju servisa');
+      }
+    } catch (error) {
+      console.error('Error adding service:', error);
+      setSnackbar({ open: true, message: 'Greška pri dodavanju servisa', severity: 'error' });
+    }
+  };
+
+  const handleAddMileage = async (mileageData) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`http://localhost:5000/api/vehicles/${selectedVehicle._id}/mileage`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...mileageData,
+          date: new Date(mileageData.date).toISOString(),
+          enteredBy: user._id
+        })
+      });
+      
+      if (response.ok) {
+        setSnackbar({ open: true, message: 'Kilometraža uspješno dodana', severity: 'success' });
+        await fetchDailyMileage(selectedVehicle._id);
+        
+        // Refresh vehicle data to update current odometer
+        await fetchVehicleDetails(selectedVehicle._id);
+      } else {
+        throw new Error('Greška pri dodavanju kilometraže');
+      }
+    } catch (error) {
+      console.error('Error adding mileage:', error);
+      setSnackbar({ open: true, message: 'Greška pri dodavanju kilometraže', severity: 'error' });
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  // Helper funkcije za statistike
+  const getGlobalStats = () => {
+    const totalVehicles = vehicles.length;
+    const activeVehicles = vehicles.filter(v => !v.status || v.status === 'active').length;
+    const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length;
+    
+    // Safe mileage calculation - koristimo currentOdometer
+    const totalMileage = vehicles.reduce((acc, vehicle) => {
+      const current = vehicle.currentOdometer || 0;
+      return acc + current;
+    }, 0);
+    
+    const averageMileage = totalVehicles > 0 ? Math.round(totalMileage / totalVehicles) : 0;
+
+    return {
+      totalVehicles,
+      activeVehicles,
+      maintenanceVehicles,
+      totalMileage,
+      averageMileage
+    };
+  };
+
+  const globalStats = getGlobalStats();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <div className="flex min-h-screen bg-gradient-to-br from-[#0F111A] via-[#1A1C25] to-[#232634] text-white">
+      {/* Sidebar Component */}
+      <Sidebar
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+        user={user}
+        onLogout={handleLogout}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-gradient-to-r from-[#1A1C25] to-[#232634]/80 backdrop-blur-xl border-b border-[#2A2D3A] p-8 shadow-2xl shadow-[#6C63FF]/5 animate-slideDown">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-white bg-gradient-to-r from-white via-[#E2E8FF] to-[#B0B3C1] bg-clip-text text-transparent">
+                Upravljanje vozilima
+              </h1>
+              <p className="text-[#B0B3C1] mt-3 text-lg font-light">
+                Pregled vozila, servisa i dnevne kilometraže
+              </p>
+            </div>
+            <div className="flex items-center space-x-6">
+              <div className="bg-[#232634]/60 backdrop-blur-lg px-6 py-3 rounded-2xl text-[#B0B3C1] border border-[#2A2D3A] shadow-2xl shadow-black/30 hover:shadow-[#6C63FF]/20 hover:border-[#6C63FF]/40 transition-all duration-500 group hover:scale-105">
+                <span className="flex items-center space-x-3">
+                  <span className="text-xl">📅</span>
+                  <span className="font-medium">{new Date().toLocaleDateString('bs-BA')}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 p-8 overflow-auto">
+          <div className="space-y-8 animate-fadeIn">
+            {/* Globalne statistike */}
+            <VehicleStats 
+              globalStats={globalStats} 
+              hoveredCard={hoveredCard}
+              onHover={setHoveredCard}
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              {/* Lista vozila */}
+              <VehiclesList
+                vehicles={vehicles}
+                selectedVehicle={selectedVehicle}
+                onVehicleSelect={handleVehicleSelect}
+              />
+
+              {/* Detalji odabranog vozila */}
+              <div className="lg:col-span-3">
+                {selectedVehicle ? (
+                  <div className="bg-gradient-to-br from-[#1A1C25] to-[#232634] rounded-2xl border border-[#2A2D3A] shadow-2xl shadow-black/20 hover:shadow-[#6C63FF]/10 transition-all duration-500 animate-slideUp">
+                    {/* Tab navigacija */}
+                    <div className="border-b border-[#2A2D3A]">
+                      <div className="flex space-x-1 p-6">
+                        <button
+                          onClick={() => setActiveTab("details")}
+                          className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                            activeTab === "details"
+                              ? "bg-[#6C63FF] text-white shadow-lg shadow-[#6C63FF]/25"
+                              : "text-[#B0B3C1] hover:text-white hover:bg-[#2A2D3A]"
+                          }`}
+                        >
+                          📋 Detalji vozila
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("service")}
+                          className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                            activeTab === "service"
+                              ? "bg-[#6C63FF] text-white shadow-lg shadow-[#6C63FF]/25"
+                              : "text-[#B0B3C1] hover:text-white hover:bg-[#2A2D3A]"
+                          }`}
+                        >
+                          🔧 Servisna historija
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("mileage")}
+                          className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                            activeTab === "mileage"
+                              ? "bg-[#6C63FF] text-white shadow-lg shadow-[#6C63FF]/25"
+                              : "text-[#B0B3C1] hover:text-white hover:bg-[#2A2D3A]"
+                          }`}
+                        >
+                          📊 Dnevna kilometraža
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tab sadržaj */}
+                    <div className="p-6">
+                      {activeTab === "details" && (
+                        <VehicleDetails 
+                          vehicle={selectedVehicle} 
+                          onAddService={handleAddService}
+                        />
+                      )}
+                      {activeTab === "service" && (
+                        <ServiceHistory 
+                          serviceHistory={serviceHistory}
+                          vehicle={selectedVehicle}
+                          onAddService={handleAddService}
+                        />
+                      )}
+                      {activeTab === "mileage" && (
+                        <DailyMileage 
+                          dailyMileage={dailyMileage}
+                          vehicle={selectedVehicle}
+                          onAddMileage={handleAddMileage}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gradient-to-br from-[#1A1C25] to-[#232634] rounded-2xl border border-[#2A2D3A] shadow-2xl shadow-black/20 hover:shadow-[#6C63FF]/10 transition-all duration-500 animate-slideUp">
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4">🚗</div>
+                      <p className="text-[#B0B3C1] text-lg">Odaberite vozilo za pregled detalja i servisa</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* Snackbar za notifikacije */}
+      {snackbar.open && (
+        <div className={`fixed bottom-4 right-4 p-4 rounded-xl border backdrop-blur-sm animate-slideUp ${
+          snackbar.severity === 'success' 
+            ? 'bg-[#27AE60]/20 border-[#27AE60]/30 text-[#27AE60]' 
+            : 'bg-[#FF6B35]/20 border-[#FF6B35]/30 text-[#FF6B35]'
+        }`}>
+          <div className="flex items-center space-x-3">
+            <span>{snackbar.severity === 'success' ? '✅' : '⚠️'}</span>
+            <span>{snackbar.message}</span>
+            <button 
+              onClick={handleCloseSnackbar}
+              className="ml-2 hover:opacity-70 transition-opacity duration-300"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

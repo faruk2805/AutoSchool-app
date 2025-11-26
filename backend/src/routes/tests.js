@@ -20,4 +20,6 @@ router.get('/combined', protect, getCombinedTest);
 // Kandidat rješava test
 router.post('/submit', protect, submitTest);
 
+
+
 module.exports = router;

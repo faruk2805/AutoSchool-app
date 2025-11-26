@@ -9,6 +9,25 @@ router.post('/', protect, authorize('admin', 'instruktor'), async (req, res) => 
   const termin = await DrivingTime.create(req.body);
   res.status(201).json(termin);
 });
+// Kandidat sam zakazuje vožnju
+router.post('/book', protect, authorize('kandidat'), async (req, res) => {
+  try {
+    const { instruktorId, datum, vrijemePocetka, vrijemeZavrsetka } = req.body;
+
+    const noviTermin = await DrivingTime.create({
+      kandidat: req.user._id,
+      instruktor: instruktorId,
+      datum,
+      vrijemePocetka,
+      vrijemeZavrsetka,
+      status: 'zakazan'
+    });
+
+    res.status(201).json(noviTermin);
+  } catch (error) {
+    res.status(400).json({ message: 'Greška pri zakazivanju termina', error: error.message });
+  }
+});
 
 // Automatsko generisanje termina
 router.post('/schedule', protect, authorize('admin'), async (req, res) => {
@@ -44,6 +63,21 @@ router.put('/:id', protect, authorize('admin', 'instruktor'), async (req, res) =
 router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   await DrivingTime.findByIdAndDelete(req.params.id);
   res.json({ message: 'Termin obrisan' });
+});
+// Dohvat termina po INSTRUKTORU
+router.get('/instruktor/:id', protect, async (req, res) => {
+  try {
+    const termini = await DrivingTime.find({ 
+      instruktor: req.params.id 
+    })
+    .populate('kandidat', 'name surname email')
+    .populate('instruktor', 'name surname email')
+    .sort({ datum: 1, vrijemePocetka: 1 });
+    
+    res.json(termini);
+  } catch (error) {
+    res.status(500).json({ message: 'Greška pri dohvatanju termina', error: error.message });
+  }
 });
 
 module.exports = router;

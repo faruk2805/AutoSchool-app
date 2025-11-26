@@ -9,26 +9,25 @@ const userSchema = new mongoose.Schema({
   jmbg: { type: String, required: true },
   role: { type: String, enum: ["candidate", "instructor", "admin"], default: "candidate" },
 
+  // 🔹 Povezan instruktor (ako postoji)
+  instruktor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+
   // Napredak kroz obuku
   status: {
     teorijaPrvaPomoc: { type: Boolean, default: false },
-    testovi: {
-      teorija: { type: Boolean, default: false },
-      saobracajniZnakovi: { type: Boolean, default: false },
-      raskrsnice: { type: Boolean, default: false }
-    },
     voznja: {
       brojVoznji: { type: Number, default: 0 },
-      ocjene: [{ type: String }], // npr. "dobar", "odlican"
+      ocjene: [{ type: String }],
       zavrsnaVoznja: { type: Boolean, default: false }
     },
-    bedzevi: [{ type: String }] // Gamifikacija
+    polozio: {
+      teoriju: { type: Boolean, default: false },
+      prvuPomoc: { type: Boolean, default: false },
+      voznju: { type: Boolean, default: false }
+    },
+    bedzevi: [{ type: String }]
   },
 
-  // Završeni testovi
-  completedTests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Test' }],
-
-  // Vožnje sa ocjenama i napomenama
   drivingSessions: [
     {
       termin: { type: mongoose.Schema.Types.ObjectId, ref: 'DrivingTime' },
@@ -37,10 +36,8 @@ const userSchema = new mongoose.Schema({
     }
   ],
 
-  // Preporuke za učenje
-  recommendations: [{ type: String }], 
+  recommendations: [{ type: String }],
 
-  // Dokumentacija kandidata
   documents: {
     idCard: { type: String },
     medical: { type: String },

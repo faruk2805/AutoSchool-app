@@ -32,7 +32,7 @@ exports.getPayments = async (req, res) => {
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
 
     // Pretpostavimo da je cijena obuke 1000 (može se staviti u env)
-    const totalDue = 1000;
+    const totalDue = 1300;
     const remaining = totalDue - totalPaid;
 
     res.json({

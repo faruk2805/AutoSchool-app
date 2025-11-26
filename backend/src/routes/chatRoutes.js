@@ -1,15 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware'); // koristimo protect
-const { sendMessage, getMessages, updateMessageStatus } = require('../controllers/chatController');
+const { protect } = require('../middleware/authMiddleware');
+const { 
+  sendMessage, 
+  getUserMessages, 
+  getConversations, 
+  updateMessageStatus,
+  getCandidates  
+} = require('../controllers/chatController');
 
 // Nova poruka
 router.post('/', protect, sendMessage);
 
-// Dohvat poruka za korisnika
-router.get('/:userId', protect, getMessages);
+// Dohvat poruka između dva korisnika
+router.get('/conversation/:userId', protect, getUserMessages);
 
-// Update statusa poruke (sent, delivered, read)
+// Dohvat svih konverzacija
+router.get('/conversations', protect, getConversations);
+
+// Dohvat kandidata za instruktora
+router.get('/candidates', protect, getCandidates);  // DODAJ OVU RUTU
+
+// Update statusa poruke
 router.put('/:id/status', protect, updateMessageStatus);
 
 module.exports = router;
